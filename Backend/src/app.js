@@ -1,8 +1,16 @@
 const express = require("express")
 const cookieParser = require("cookie-parser")
 const cors = require("cors")
+const fs = require("fs")           
+const path = require("path")        
 
 const app = express()
+
+
+const uploadsDir = path.join(__dirname, "uploads")
+if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true })
+}
 
 app.use(cors({
     origin: ['http://localhost:5173', 'https://interview-master-xi.vercel.app'],
