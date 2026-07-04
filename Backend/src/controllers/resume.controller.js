@@ -330,7 +330,7 @@ const generateResumePDF = async (req, res) => {
         await browser.close()
 
         res.setHeader('Content-Type', 'application/pdf')
-        res.setHeader('Content-Disposition', `attachment; filename=resume-${id}.pdf`)
+      res.setHeader('Content-Disposition', `inline; filename=resume-${id}.pdf`)
         res.send(pdf)
 
     } catch (err) {

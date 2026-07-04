@@ -341,7 +341,7 @@ const generatePDF = async (req, res) => {
         await browser.close()
 
         res.setHeader('Content-Type', 'application/pdf')
-        res.setHeader('Content-Disposition', `attachment; filename=interview-report-${id}.pdf`)
+        res.setHeader('Content-Disposition', `inline; filename=interview-report-${id}.pdf`)
         res.send(pdf)
 
     } catch (err) {

@@ -27,11 +27,11 @@ const Report = () => {
     }
 
     const handleDownloadPDF = () => {
-        window.open(`http://localhost:3000/api/interview/pdf/${id}`, '_blank')
+        window.open(`https://interview-master-production-4a10.up.railway.app/api/interview/pdf/${id}`, '_blank')
     }
 
     const handleGenerateResume = () => {
-        window.open(`http://localhost:3000/api/resume/generate/${id}`, '_blank')
+        window.open(`https://interview-master-production-4a10.up.railway.app/api/resume/generate/${id}`, '_blank')
     }
 
     if (loading) return (
