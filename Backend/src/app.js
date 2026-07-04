@@ -5,9 +5,9 @@ const cors = require("cors")
 const app = express()
 
 app.use(cors({
-    origin: ["http://localhost:5173", "http://localhost:5174"],
+    origin: ['http://localhost:5173', 'https://interview-master-production-4a10.up.railway.app'],
     credentials: true
-}))
+}));
 app.use(express.json())
 app.use(cookieParser())
 

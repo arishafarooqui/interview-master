@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const API = axios.create({
-    baseURL: "http://localhost:3000/api/auth",
+    baseURL: "https://interview-master-production-4a10.up.railway.app/api/auth",
     withCredentials: true  // cookies ke liye
 });
 
