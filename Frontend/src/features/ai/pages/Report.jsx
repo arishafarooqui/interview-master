@@ -26,12 +26,38 @@ const Report = () => {
         }
     }
 
-    const handleDownloadPDF = () => {
-        window.open(`https://interview-master-production-4a10.up.railway.app/api/interview/pdf/${id}`, '_blank')
+    const handleDownloadPDF = async () => {
+        try {
+            const token = localStorage.getItem("token")
+            const response = await fetch(
+                `https://interview-master-production-4a10.up.railway.app/api/interview/pdf/${id}`,
+                {
+                    headers: { Authorization: `Bearer ${token}` }
+                }
+            )
+            const blob = await response.blob()
+            const url = window.URL.createObjectURL(blob)
+            window.open(url, '_blank')
+        } catch (err) {
+            console.log(err)
+        }
     }
 
-    const handleGenerateResume = () => {
-        window.open(`https://interview-master-production-4a10.up.railway.app/api/resume/generate/${id}`, '_blank')
+    const handleGenerateResume = async () => {
+        try {
+            const token = localStorage.getItem("token")
+            const response = await fetch(
+                `https://interview-master-production-4a10.up.railway.app/api/resume/generate/${id}`,
+                {
+                    headers: { Authorization: `Bearer ${token}` }
+                }
+            )
+            const blob = await response.blob()
+            const url = window.URL.createObjectURL(blob)
+            window.open(url, '_blank')
+        } catch (err) {
+            console.log(err)
+        }
     }
 
     if (loading) return (
