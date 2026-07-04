@@ -5,6 +5,15 @@ const API = axios.create({
     withCredentials: true
 })
 
+// ✅ added: yahan bhi token header mein bhejna zaroori hai
+API.interceptors.request.use((config) => {
+    const token = localStorage.getItem("token");
+    if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+});
+
 export const generateReportAPI = async (formData) => {
     const response = await API.post("/generate", formData, {
         headers: { "Content-Type": "multipart/form-data" }

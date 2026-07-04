@@ -2,7 +2,7 @@ const jwt = require("jsonwebtoken")
 const blacklistModel = require("../models/blacklist.model")
 
 const isAuthenticated = async (req, res, next) => {
-    const token = req.cookies.token
+    const token = req.cookies.token || (req.headers.authorization?.split(" ")[1])   // ✅ changed: header se bhi check karega
 
     if (!token) {
         return res.status(401).json({
@@ -10,7 +10,6 @@ const isAuthenticated = async (req, res, next) => {
         })
     }
 
-    // Check karo token blacklist mein toh nahi
     const isBlacklisted = await blacklistModel.findOne({ token })
     if (isBlacklisted) {
         return res.status(401).json({

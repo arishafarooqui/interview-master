@@ -5,15 +5,10 @@ const jwt = require('jsonwebtoken')
 
 const cookieOptions = {
     httpOnly: true,
-    secure: true,        // sirf HTTPS pe cookie bheji jaye
-    sameSite: "none",    // cross-site (Vercel <-> Railway) allow kare
+    secure: true,
+    sameSite: "none",
 }
 
-/**
- * @description Register a new user
- * @route POST /api/auth/register
- * @access Public
- */
 const registerUserController = async (req, res) => {
     const { username, email, password } = req.body
 
@@ -49,15 +44,11 @@ const registerUserController = async (req, res) => {
 
     res.status(201).json({
         message: "User created successfully",
-        user
+        user,
+        token   // ✅ added: token bhi response body mein bhej rahe hain
     })
 }
 
-/**
- * @description Login user
- * @route POST /api/auth/login
- * @access Public
- */
 const loginUserController = async (req, res) => {
     const { email, password } = req.body
 
@@ -91,17 +82,13 @@ const loginUserController = async (req, res) => {
 
     res.status(200).json({
         message: "Login successful",
-        user
+        user,
+        token   // ✅ added
     })
 }
 
-/**
- * @description Logout user
- * @route GET /api/auth/logout
- * @access Private
- */
 const logoutUserController = async (req, res) => {
-    const token = req.cookies.token
+    const token = req.cookies.token || (req.headers.authorization?.split(" ")[1])   // ✅ changed: header se bhi le sakta hai
 
     if (!token) {
         return res.status(401).json({
