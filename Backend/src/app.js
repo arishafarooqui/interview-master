@@ -1,11 +1,10 @@
 const express = require("express")
 const cookieParser = require("cookie-parser")
 const cors = require("cors")
-const fs = require("fs")           
-const path = require("path")        
+const fs = require("fs")
+const path = require("path")
 
 const app = express()
-
 
 const uploadsDir = path.join(__dirname, "uploads")
 if (!fs.existsSync(uploadsDir)) {
