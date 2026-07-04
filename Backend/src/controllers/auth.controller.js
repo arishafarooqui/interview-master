@@ -3,6 +3,12 @@ const blacklistModel = require('../models/blacklist.model')
 const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
 
+const cookieOptions = {
+    httpOnly: true,
+    secure: true,        // sirf HTTPS pe cookie bheji jaye
+    sameSite: "none",    // cross-site (Vercel <-> Railway) allow kare
+}
+
 /**
  * @description Register a new user
  * @route POST /api/auth/register
@@ -39,7 +45,7 @@ const registerUserController = async (req, res) => {
         id: user._id
     }, process.env.JWT_SECRET)
 
-    res.cookie("token", token)
+    res.cookie("token", token, cookieOptions)
 
     res.status(201).json({
         message: "User created successfully",
@@ -81,7 +87,7 @@ const loginUserController = async (req, res) => {
         id: user._id
     }, process.env.JWT_SECRET)
 
-    res.cookie("token", token)
+    res.cookie("token", token, cookieOptions)
 
     res.status(200).json({
         message: "Login successful",
@@ -105,12 +111,13 @@ const logoutUserController = async (req, res) => {
 
     await blacklistModel.create({ token })
 
-    res.clearCookie("token")
+    res.clearCookie("token", cookieOptions)
 
     res.status(200).json({
         message: "Logout successful"
     })
 }
+
 const getProfileController = async (req, res) => {
     const user = await userModel.findById(req.user.id).select("-password")
 
@@ -125,5 +132,4 @@ module.exports = {
     loginUserController,
     logoutUserController,
     getProfileController
-
 }
