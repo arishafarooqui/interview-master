@@ -4,6 +4,13 @@ const fs = require("fs")
 const puppeteer = require("puppeteer")
 const { PDFParse } = require("pdf-parse")
 
+const normalizeSeverity = (value) => {
+    const v = value.toLowerCase()
+    if (v.includes("high")) return "high"
+    if (v.includes("low")) return "low"
+    return "medium"
+}
+
 const generateReport = async (req, res) => {
     try {
         const { jobDescription, selfDescription } = req.body
@@ -31,7 +38,7 @@ const generateReport = async (req, res) => {
 
         report.skillGaps = report.skillGaps.map(gap => ({
             ...gap,
-            severity: gap.severity.toLowerCase()
+            severity: normalizeSeverity(gap.severity)
         }))
 
         const interview = await interviewModel.create({
@@ -105,7 +112,6 @@ const generatePDF = async (req, res) => {
 
         const { report, jobDescription } = interview
 
-        // HTML template banao
         const html = `
         <!DOCTYPE html>
         <html>
@@ -260,7 +266,6 @@ const generatePDF = async (req, res) => {
                 </p>
             </div>
 
-            <!-- Technical Questions -->
             <div class="section">
                 <div class="section-title">Technical Questions (${report.technicalQuestions.length})</div>
                 ${report.technicalQuestions.map((q, i) => `
@@ -272,7 +277,6 @@ const generatePDF = async (req, res) => {
                 `).join("")}
             </div>
 
-            <!-- Behavioral Questions -->
             <div class="section">
                 <div class="section-title">Behavioral Questions (${report.behavioralQuestions.length})</div>
                 ${report.behavioralQuestions.map((q, i) => `
@@ -283,7 +287,6 @@ const generatePDF = async (req, res) => {
                 `).join("")}
             </div>
 
-            <!-- Skill Gaps -->
             <div class="section">
                 <div class="section-title">Skill Gaps</div>
                 ${report.skillGaps.map(gap => `
@@ -297,7 +300,6 @@ const generatePDF = async (req, res) => {
                 `).join("")}
             </div>
 
-            <!-- Preparation Plan -->
             <div class="section">
                 <div class="section-title">Preparation Plan</div>
                 ${report.preparationPlan.map(plan => `
@@ -323,7 +325,6 @@ const generatePDF = async (req, res) => {
         </html>
         `
 
-        // Puppeteer se PDF banao
         const browser = await puppeteer.launch({
             headless: true,
             args: ['--no-sandbox', '--disable-setuid-sandbox']
@@ -338,23 +339,3 @@ const generatePDF = async (req, res) => {
         })
 
         await browser.close()
-
-        res.setHeader('Content-Type', 'application/pdf')
-        res.setHeader('Content-Disposition', `attachment; filename=interview-report-${id}.pdf`)
-        res.send(pdf)
-
-    } catch (err) {
-        console.log(err)
-        res.status(500).json({
-            message: "PDF generation failed",
-            error: err.message
-        })
-    }
-}
-
-module.exports = {
-    generateReport,
-    getAllReports,
-    getReportById,
-    generatePDF
-}
