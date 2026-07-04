@@ -5,7 +5,7 @@ const cors = require("cors")
 const app = express()
 
 app.use(cors({
-    origin: ['http://localhost:5173', 'https://interview-master-production-4a10.up.railway.app'],
+    origin: ['http://localhost:5173', 'https://interview-master-xi.vercel.app'],
     credentials: true
 }));
 app.use(express.json())
