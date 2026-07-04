@@ -339,3 +339,23 @@ const generatePDF = async (req, res) => {
         })
 
         await browser.close()
+
+        res.setHeader('Content-Type', 'application/pdf')
+        res.setHeader('Content-Disposition', `attachment; filename=interview-report-${id}.pdf`)
+        res.send(pdf)
+
+    } catch (err) {
+        console.log(err)
+        res.status(500).json({
+            message: "PDF generation failed",
+            error: err.message
+        })
+    }
+}
+
+module.exports = {
+    generateReport,
+    getAllReports,
+    getReportById,
+    generatePDF
+}
