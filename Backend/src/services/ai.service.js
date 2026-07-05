@@ -1,77 +1,26 @@
-const { GoogleGenerativeAI, SchemaType } = require("@google/generative-ai")
+const GROQ_API_KEY = process.env.GROQ_API_KEY
+const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
-
-const interviewReportSchema = {
-    type: SchemaType.OBJECT,
-    properties: {
-        matchScore: {
-            type: SchemaType.NUMBER,
-        },
-        technicalQuestions: {
-            type: SchemaType.ARRAY,
-            items: {
-                type: SchemaType.OBJECT,
-                properties: {
-                    question: { type: SchemaType.STRING },
-                    answer: { type: SchemaType.STRING },
-                    topic: { type: SchemaType.STRING }
-                },
-                required: ["question", "answer", "topic"]
-            }
-        },
-        behavioralQuestions: {
-            type: SchemaType.ARRAY,
-            items: {
-                type: SchemaType.OBJECT,
-                properties: {
-                    question: { type: SchemaType.STRING },
-                    answer: { type: SchemaType.STRING }
-                },
-                required: ["question", "answer"]
-            }
-        },
-        skillGaps: {
-            type: SchemaType.ARRAY,
-            items: {
-                type: SchemaType.OBJECT,
-                properties: {
-                    skill: { type: SchemaType.STRING },
-                    severity: { type: SchemaType.STRING },
-                    description: { type: SchemaType.STRING }
-                },
-                required: ["skill", "severity", "description"]
-            }
-        },
-        preparationPlan: {
-            type: SchemaType.ARRAY,
-            items: {
-                type: SchemaType.OBJECT,
-                properties: {
-                    day: { type: SchemaType.NUMBER },
-                    focus: { type: SchemaType.STRING },
-                    tasks: {
-                        type: SchemaType.ARRAY,
-                        items: { type: SchemaType.STRING }
-                    }
-                },
-                required: ["day", "focus", "tasks"]
-            }
-        }
-    },
-    required: ["matchScore", "technicalQuestions", "behavioralQuestions", "skillGaps", "preparationPlan"]
+const schemaDescription = `
+Return ONLY a valid JSON object with EXACTLY this structure (no markdown, no backticks, no extra text):
+{
+  "matchScore": <number 0-100>,
+  "technicalQuestions": [
+    { "question": "string", "answer": "string", "topic": "string" }
+  ],
+  "behavioralQuestions": [
+    { "question": "string", "answer": "string" }
+  ],
+  "skillGaps": [
+    { "skill": "string", "severity": "low" | "medium" | "high", "description": "string" }
+  ],
+  "preparationPlan": [
+    { "day": <number>, "focus": "string", "tasks": ["string", "..."] }
+  ]
 }
+`
 
 const generateInterviewReport = async ({ jobDescription, selfDescription, resumeText }) => {
-    const model = genAI.getGenerativeModel({
-        model: "gemini-2.5-flash",
-        generationConfig: {
-            responseMimeType: "application/json",
-            responseSchema: interviewReportSchema,
-            maxOutputTokens: 8192,
-            temperature: 0.8,
-        }
-    })
 
     const prompt = `
     You are an expert interview coach. Analyze the following and generate a comprehensive interview preparation report.
@@ -87,6 +36,9 @@ const generateInterviewReport = async ({ jobDescription, selfDescription, resume
     - Every "answer" field must be 2-4 sentences MAXIMUM. Do not write long paragraphs.
     - Do not repeat the same sentence or phrase multiple times.
     - Be concise and direct in every field.
+    - "severity" MUST be exactly one of: "low", "medium", "high" — no other words allowed.
+
+    ${schemaDescription}
     `
 
     const maxRetries = 2
@@ -94,10 +46,33 @@ const generateInterviewReport = async ({ jobDescription, selfDescription, resume
 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
         try {
-            const result = await model.generateContent(prompt)
-            const response = result.response.text()
-            const report = JSON.parse(response)
+            const response = await fetch(GROQ_URL, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${GROQ_API_KEY}`
+                },
+                body: JSON.stringify({
+                    model: "llama-3.3-70b-versatile",
+                    messages: [
+                        { role: "user", content: prompt }
+                    ],
+                    response_format: { type: "json_object" },
+                    temperature: 0.7,
+                    max_tokens: 6000
+                })
+            })
+
+            const data = await response.json()
+
+            if (!response.ok) {
+                throw new Error(data.error?.message || "Groq API request failed")
+            }
+
+            const text = data.choices[0].message.content
+            const report = JSON.parse(text)
             return report
+
         } catch (err) {
             lastError = err
             console.log(`Attempt ${attempt + 1} failed:`, err.message)

@@ -1,8 +1,8 @@
 const puppeteer = require("puppeteer")
-const { GoogleGenerativeAI } = require("@google/generative-ai")
 const interviewModel = require("../models/interview.model")
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
+const GROQ_API_KEY = process.env.GROQ_API_KEY
+const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 const generateResumePDF = async (req, res) => {
     try {
@@ -21,22 +21,29 @@ const generateResumePDF = async (req, res) => {
             })
         }
 
-        // AI se resume content generate karo
-        const model = genAI.getGenerativeModel({
-            model: "gemini-2.5-flash",
-            generationConfig: {
-                responseMimeType: "application/json"
-            }
-        })
-
         const prompt = `
-        You are a professional resume writer. Rewrite and improve the candidate's ACTUAL resume below so it is
-        better tailored to the given job description. Do NOT invent a different person, company, project, or
-        history. Use ONLY the real information found in "Candidate's Original Resume". You may rephrase,
-        reorder, tighten bullet points, and emphasize skills/experience that are relevant to the job description,
-        but every name, employer, project, degree, and date must come from the original resume text. If a field
-        (e.g. phone or LinkedIn) is not present anywhere in the original resume, return an empty string "" for it
-        instead of making one up.
+        You are a professional resume writer working across ALL industries and fields (technology, medicine,
+        sales, education, finance, marketing, HR, hospitality, etc.). Rewrite and improve the candidate's
+        ACTUAL resume below so it presents them as strongly and relevantly as possible for the given job
+        description.
+
+        STRICT RULES — DO NOT VIOLATE THESE:
+        1. Use ONLY real information from "Candidate's Original Resume" below. Do NOT invent, assume, or add
+           ANY skill, tool, technology, certification, employer, project, degree, or achievement that is not
+           explicitly present in the original resume text or self description.
+        2. Detect the candidate's actual field/industry from their resume (e.g. medicine, sales, software
+           development, teaching, design, etc.) and create skill category names that make sense for THAT
+           field. Do NOT use generic tech categories like "Frontend"/"Backend" unless the candidate is
+           actually a software developer. For example: a doctor might have "Clinical Skills" and
+           "Certifications"; a sales person might have "Sales Tools" and "Soft Skills"; a developer might
+           have "Frontend", "Backend", "Tools".
+        3. If the candidate's background does not perfectly match the job description, do NOT fabricate
+           missing skills. Instead, rephrase and reorder their REAL experience and skills to emphasize
+           whatever is genuinely transferable and relevant to the job.
+        4. You may rephrase, reorder, and tighten bullet points for clarity and impact — every fact must
+           trace back to the original resume text.
+        5. If a field (phone, LinkedIn, GitHub) is not present anywhere in the original resume, return an
+           empty string "" for it instead of making one up.
 
         Candidate's Original Resume (raw extracted text):
         """
@@ -45,52 +52,73 @@ const generateResumePDF = async (req, res) => {
 
         Candidate Self Description (extra context, may be empty): ${selfDescription || "Not provided"}
         Target Job Description: ${jobDescription}
-        Skill Gaps Identified Earlier (for context only, do not fabricate experience to cover these): ${report.skillGaps.map(g => g.skill).join(", ") || "None"}
 
-        Return ONLY a JSON object:
+        Return ONLY a JSON object in this exact shape (no markdown, no backticks, no extra text):
         {
             "name": "Candidate's real name from the resume",
             "email": "real email from the resume, else ''",
             "phone": "real phone from the resume, else ''",
             "linkedin": "real linkedin url from the resume, else ''",
             "github": "real github url from the resume, else ''",
-            "summary": "2-3 sentence professional summary based on the candidate's real background, tailored to the job",
-            "skills": {
-                "frontend": ["only real skills from the resume"],
-                "backend": ["only real skills from the resume"],
-                "tools": ["only real skills from the resume"]
-            },
+            "summary": "2-3 sentence professional summary based ONLY on the candidate's real background, tailored to the job",
+            "skillCategories": [
+                { "category": "Appropriate category name for this candidate's actual field", "skills": ["only real skills belonging to this category from the resume"] }
+            ],
             "experience": [
-                {
-                    "company": "real company name from resume",
-                    "role": "real job title from resume",
-                    "duration": "real duration from resume",
-                    "points": ["rewritten/improved bullet based on a real achievement", "..."]
-                }
+                { "company": "real company/organization name from resume", "role": "real job title/role from resume", "duration": "real duration from resume", "points": ["rewritten/improved bullet based on a REAL achievement from the resume"] }
             ],
             "projects": [
-                {
-                    "name": "real project name from resume",
-                    "tech": "real tech stack from resume",
-                    "points": ["rewritten/improved bullet based on real project details"]
-                }
+                { "name": "real project/case-study/initiative name from resume, if applicable to this field", "tech": "real tools/tech/methods used, from resume", "points": ["rewritten/improved bullet based on real details"] }
             ],
             "education": [
-                {
-                    "degree": "real degree from resume",
-                    "institute": "real institute from resume",
-                    "year": "real year range from resume"
-                }
+                { "degree": "real degree/qualification from resume", "institute": "real institute from resume", "year": "real year range from resume" }
             ]
         }
-        If the resume has no work experience, return an empty array for "experience" instead of inventing one.
-        Return ONLY JSON, no markdown, no backticks.
+        Rules for arrays:
+        - "skillCategories": create 2-4 categories max, only with real skills. Skip a category entirely if the candidate has no real skills for it.
+        - If the resume has no work experience, return an empty array for "experience".
+        - If the resume has no projects/case-studies section, return an empty array for "projects".
         `
 
-        const result = await model.generateContent(prompt)
-        const response = result.response.text()
-        const clean = response.replace(/```json|```/g, "").trim()
-        const resumeData = JSON.parse(clean)
+        const maxRetries = 2
+        let resumeData
+
+        for (let attempt = 0; attempt <= maxRetries; attempt++) {
+            try {
+                const response = await fetch(GROQ_URL, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${GROQ_API_KEY}`
+                    },
+                    body: JSON.stringify({
+                        model: "llama-3.3-70b-versatile",
+                        messages: [
+                            { role: "user", content: prompt }
+                        ],
+                        response_format: { type: "json_object" },
+                        temperature: 0.6,
+                        max_tokens: 4000
+                    })
+                })
+
+                const data = await response.json()
+
+                if (!response.ok) {
+                    throw new Error(data.error?.message || "Groq API request failed")
+                }
+
+                const text = data.choices[0].message.content
+                resumeData = JSON.parse(text)
+                break
+
+            } catch (err) {
+                console.log(`Resume attempt ${attempt + 1} failed:`, err.message)
+                if (attempt === maxRetries) {
+                    throw new Error("AI could not generate resume after multiple attempts. Please try again.")
+                }
+            }
+        }
 
         const html = `
         <!DOCTYPE html>
@@ -146,7 +174,7 @@ const generateResumePDF = async (req, res) => {
                 }
                 .skills-grid {
                     display: grid;
-                    grid-template-columns: 1fr 1fr 1fr;
+                    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
                     gap: 8px;
                 }
                 .skill-group h4 {
@@ -243,33 +271,25 @@ const generateResumePDF = async (req, res) => {
                 <p class="summary">${resumeData.summary}</p>
             </div>
 
+            ${resumeData.skillCategories && resumeData.skillCategories.length > 0 ? `
             <div class="section">
-                <div class="section-title">Technical Skills</div>
+                <div class="section-title">Skills</div>
                 <div class="skills-grid">
-                    <div class="skill-group">
-                        <h4>Frontend</h4>
-                        <div class="skill-tags">
-                            ${resumeData.skills.frontend.map(s => `<span class="skill-tag">${s}</span>`).join("")}
+                    ${resumeData.skillCategories.map(cat => `
+                        <div class="skill-group">
+                            <h4>${cat.category}</h4>
+                            <div class="skill-tags">
+                                ${cat.skills.map(s => `<span class="skill-tag">${s}</span>`).join("")}
+                            </div>
                         </div>
-                    </div>
-                    <div class="skill-group">
-                        <h4>Backend & Database</h4>
-                        <div class="skill-tags">
-                            ${resumeData.skills.backend.map(s => `<span class="skill-tag">${s}</span>`).join("")}
-                        </div>
-                    </div>
-                    <div class="skill-group">
-                        <h4>Tools & DevOps</h4>
-                        <div class="skill-tags">
-                            ${resumeData.skills.tools.map(s => `<span class="skill-tag">${s}</span>`).join("")}
-                        </div>
-                    </div>
+                    `).join("")}
                 </div>
             </div>
+            ` : ""}
 
-            ${resumeData.experience.length > 0 ? `
+            ${resumeData.experience && resumeData.experience.length > 0 ? `
             <div class="section">
-                <div class="section-title">Work Experience</div>
+                <div class="section-title">Experience</div>
                 ${resumeData.experience.map(exp => `
                     <div class="exp-item">
                         <div class="exp-header">
@@ -285,6 +305,7 @@ const generateResumePDF = async (req, res) => {
             </div>
             ` : ""}
 
+            ${resumeData.projects && resumeData.projects.length > 0 ? `
             <div class="section">
                 <div class="section-title">Projects</div>
                 ${resumeData.projects.map(proj => `
@@ -299,7 +320,9 @@ const generateResumePDF = async (req, res) => {
                     </div>
                 `).join("")}
             </div>
+            ` : ""}
 
+            ${resumeData.education && resumeData.education.length > 0 ? `
             <div class="section">
                 <div class="section-title">Education</div>
                 ${resumeData.education.map(edu => `
@@ -312,6 +335,7 @@ const generateResumePDF = async (req, res) => {
                     </div>
                 `).join("")}
             </div>
+            ` : ""}
         </body>
         </html>
         `
@@ -330,7 +354,7 @@ const generateResumePDF = async (req, res) => {
         await browser.close()
 
         res.setHeader('Content-Type', 'application/pdf')
-      res.setHeader('Content-Disposition', `inline; filename=resume-${id}.pdf`)
+        res.setHeader('Content-Disposition', `inline; filename=resume-${id}.pdf`)
         res.send(pdf)
 
     } catch (err) {
