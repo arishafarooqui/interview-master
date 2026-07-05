@@ -39,11 +39,17 @@ const generateResumePDF = async (req, res) => {
            have "Frontend", "Backend", "Tools".
         3. If the candidate's background does not perfectly match the job description, do NOT fabricate
            missing skills. Instead, rephrase and reorder their REAL experience and skills to emphasize
-           whatever is genuinely transferable and relevant to the job.
+           whatever is genuinely transferable and relevant to the job. Frame the professional summary to
+           confidently connect their real background to the job's needs wherever a genuine connection exists.
         4. You may rephrase, reorder, and tighten bullet points for clarity and impact — every fact must
            trace back to the original resume text.
         5. If a field (phone, LinkedIn, GitHub) is not present anywhere in the original resume, return an
            empty string "" for it instead of making one up.
+        6. If there is a clear gap between the candidate's real skills and the job requirements, you may add
+           a "growthAreas" array: 1-3 short, honest, forward-looking statements naming what the candidate is
+           actively developing toward the role (e.g. "Actively building expertise in Unity and game physics
+           to transition into game development"). Never imply the candidate already has a skill they don't.
+           Omit "growthAreas" (empty array) if there's no meaningful gap worth mentioning.
 
         Candidate's Original Resume (raw extracted text):
         """
@@ -64,6 +70,7 @@ const generateResumePDF = async (req, res) => {
             "skillCategories": [
                 { "category": "Appropriate category name for this candidate's actual field", "skills": ["only real skills belonging to this category from the resume"] }
             ],
+            "growthAreas": ["optional: 1-3 honest forward-looking statements, or empty array"],
             "experience": [
                 { "company": "real company/organization name from resume", "role": "real job title/role from resume", "duration": "real duration from resume", "points": ["rewritten/improved bullet based on a REAL achievement from the resume"] }
             ],
@@ -319,6 +326,15 @@ const generateResumePDF = async (req, res) => {
                         </ul>
                     </div>
                 `).join("")}
+            </div>
+            ` : ""}
+
+            ${resumeData.growthAreas && resumeData.growthAreas.length > 0 ? `
+            <div class="section">
+                <div class="section-title">Growth & Development</div>
+                <ul>
+                    ${resumeData.growthAreas.map(g => `<li>${g}</li>`).join("")}
+                </ul>
             </div>
             ` : ""}
 

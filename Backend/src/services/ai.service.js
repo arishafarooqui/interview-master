@@ -23,19 +23,30 @@ Return ONLY a valid JSON object with EXACTLY this structure (no markdown, no bac
 const generateInterviewReport = async ({ jobDescription, selfDescription, resumeText }) => {
 
     const prompt = `
-    You are an expert interview coach. Analyze the following and generate a comprehensive interview preparation report.
+    You are an expert interview coach. Analyze the following and generate a comprehensive, detailed interview preparation report.
 
     Job Description: ${jobDescription}
     Candidate Profile: ${selfDescription || "Not provided"}
     Resume Content: ${resumeText || "Not provided"}
 
-    Generate at least 5 technical questions, 3 behavioral questions, 3 skill gaps, and a day-wise preparation plan.
+    Generate at least 5 technical questions, 3 behavioral questions, 3 skill gaps, and a day-wise preparation plan
+    covering AT LEAST 5 DAYS (ideally 5-7 days).
     Also provide a matchScore between 0-100 based on how well the candidate matches the job description.
 
-    IMPORTANT RULES:
-    - Every "answer" field must be 2-4 sentences MAXIMUM. Do not write long paragraphs.
+    HOW TO WRITE THE "answer" FIELD FOR technicalQuestions AND behavioralQuestions:
+    - Write a clear, well-explained, correct answer to the question itself — as if a knowledgeable expert or
+      textbook were answering it directly, so the candidate can learn the concept and use it to prepare.
+    - For technical questions: explain the concept/topic clearly and accurately, with enough detail that
+      someone reading it would understand and be able to explain it themselves in an interview.
+    - For behavioral questions: provide a strong example answer using a realistic structure (e.g. STAR method),
+      relevant to the candidate's field/background where possible.
+    - Do NOT write commentary ABOUT the candidate (e.g. do not write "the candidate has experience with X but
+      lacks Y"). Just answer the actual question being asked.
+    - Aim for 4-6 sentences with real depth and clarity.
     - Do not repeat the same sentence or phrase multiple times.
-    - Be concise and direct in every field.
+
+    OTHER RULES:
+    - Each "day" in preparationPlan should have 2-4 concrete tasks, and the plan must span at least 5 distinct days.
     - "severity" MUST be exactly one of: "low", "medium", "high" — no other words allowed.
 
     ${schemaDescription}
@@ -59,7 +70,7 @@ const generateInterviewReport = async ({ jobDescription, selfDescription, resume
                     ],
                     response_format: { type: "json_object" },
                     temperature: 0.7,
-                    max_tokens: 6000
+                    max_tokens: 8000
                 })
             })
 
